@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brain Tumor MRI Classifier</title>
+    <style>
+        body {
+            font-family: 'Lucida Handwriting', cursive;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: #fff;
+            background-color: #000; /* Fallback background color */
+        }
+
+        h1 {
+            color: #fff;
+        }
+
+        .upload-btn {
+            padding: 10px 20px;
+            background: linear-gradient(145deg, #1e90ff, #000000); /* Blue to Black Gradient */
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000000;
+            box-shadow: 3px 3px 10px #000000, -3px -3px 10px #ffffff; /* 3D effect using shadows */
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-3px); /* Raise the button slightly */
+            box-shadow: 3px 3px 15px #000000, -3px -3px 15px #ffffff; /* Enhance shadow on hover */
+        }
+
+        .transparent-btn {
+            padding: 10px 20px;
+            background-color: transparent;
+            color: #fff;
+            border: 2px solid #fff;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .transparent-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        #result {
+            margin-top: 30px;
+            font-size: 20px;
+            font-weight: bold;
+            height: 50px;
+            color: #fff;
+        }
+
+        #prediction {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 5px;
+            opacity: 0;
+            transition: opacity 0.5s ease, background-color 0.5s ease;
+        }
+
+        #positive {
+            background-color: #ff4c4c;
+            color: white;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        #negative {
+            background-color: #4CAF50;
+            color: white;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .video-background {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            z-index: -1;
+            transform: translateX(-50%) translateY(-50%);
+            background-size: cover;
+            object-fit: cover; /* Ensures the video covers the background */
+            animation: fadeIn 1s ease-in-out; /* Smooth transition */
+        }
+
+        .container {
+            position: relative;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 30px;
+            border-radius: 10px;
+            z-index: 2;
+            text-align: center;
+        }
+
+        #image-preview {
+            margin: 20px auto;
+            max-width: 100%;
+            max-height: 300px;
+            display: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <video autoplay muted loop class="video-background" preload="auto">
+        <source src="https://cdn.pixabay.com/video/2021/10/10/91633-629213975_large.mp4" type="video/mp4">
+    </video>
+
+    <div class="container">
+        <div class="content">
+            <h1>Brain Tumor Analyzation</h1>
+            <form id="upload-form" method="POST" enctype="multipart/form-data">
+                <input type="file" name="file" id="file" class="upload-btn" accept="image/*">
+                <br><br>
+                <input type="submit" value="Upload and Classify" class="transparent-btn">
+                <input type="reset" value="Reset" class="transparent-btn">
+            </form>
+            <img id="image-preview" alt="Selected Image Preview">
+            <div id="result">
+                <h2>Result:</h2>
+                <p id="prediction"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('file');
+        const imagePreview = document.getElementById('image-preview');
+        const predictionElement = document.getElementById('prediction');
+
+        // Show image preview on file select
+        fileInput.addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Handle form submit
+        document.getElementById('upload-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+
+            predictionElement.style.opacity = 0;
+
+            fetch('/', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        predictionElement.textContent = 'Error: ' + data.error;
+                        predictionElement.className = '';
+                    } else {
+                        if (data.result.toLowerCase() === 'positive') {
+                            predictionElement.textContent = 'Positive: Tumor Detected';
+                            predictionElement.className = 'positive';
+                            predictionElement.id = 'positive';
+                        } else {
+                            predictionElement.textContent = 'Negative: No Tumor Detected';
+                            predictionElement.className = 'negative';
+                            predictionElement.id = 'negative';
+                        }
+                    }
+                    predictionElement.style.opacity = 1;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    predictionElement.textContent = 'Error: ' + error.message;
+                    predictionElement.style.opacity = 1;
+                });
+        });
+
+        // Handle form reset
+        document.getElementById('upload-form').addEventListener('reset', function () {
+            imagePreview.style.display = 'none';
+            predictionElement.textContent = '';
+            predictionElement.style.opacity = 0;
+        });
+    </script>
+</body>
+
+</html>
